@@ -49,18 +49,25 @@ func handleConnection(conn net.Conn) {
 		4.) The client receives the response and matches the received correlation_id to the original request
 	*/
 
-	// For now, our response will be a hard-coded correlation_id of 7
-	message_size = 0
-	correlation_id = 7
+	// Getting the correlation ID:
 
-	// err = binary.Read(netConnection, binary.BigEndian, &correlation_id)
-	// if err != nil {
-	// 	fmt.Println("Binary Reading Error: ", err.Error())
-	// 	os.Exit(1)
-	// }
+	//Since we know the message size is 4 bytes long (i.e. 32 bits . . .) and the
+	// correlationID is part of the header, where it is the 32nd through 64th bits, then we know that bits 64-86 are the necessary bits
+	message_size = 0
+
+	buffer := make([]byte, 12) // We need to take in 12 bytes
+	_, err := conn.Read(buffer)
+	if err != nil {
+		fmt.Println("Failed to read message: ", err)
+		os.Exit(1)
+	}
+
+	// Now we need to parse so that of the 12 bytes we have, we take the 9th and 10th byte
+	correlation_id = int32(binary.BigEndian.Uint32(buffer[8:10]))
+	fmt.Println(correlation_id)
 
 	//Now we want to send the binary values
-	err := binary.Write(conn, binary.BigEndian, message_size)
+	err = binary.Write(conn, binary.BigEndian, message_size)
 	if err != nil {
 		fmt.Println("Failed to write the message size with error: ", err)
 		os.Exit(1)
