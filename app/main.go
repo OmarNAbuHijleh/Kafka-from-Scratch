@@ -97,6 +97,8 @@ func handleConnection(conn net.Conn) {
 func valid_version(api_version int16) int16 {
 	if api_version > 4 {
 		return 35
+	} else if api_version < 4 {
+		return 35
 	}
 	return 0
 }
