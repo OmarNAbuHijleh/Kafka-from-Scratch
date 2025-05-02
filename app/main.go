@@ -93,7 +93,9 @@ func handleConnection(conn net.Conn) {
 
 	binary.Write(conn, binary.BigEndian, int16(3)) //min version
 	binary.Write(conn, binary.BigEndian, int16(4)) //max version
-
+	binary.Write(conn, binary.BigEndian, int8(0))  // tagged fileds
+	binary.Write(conn, binary.BigEndian, int32(0)) // throttle time
+	binary.Write(conn, binary.BigEndian, int8(0))  // tagged fileds
 }
 
 // Check that we're dealing with API version 4 or above!
