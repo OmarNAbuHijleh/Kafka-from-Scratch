@@ -34,7 +34,7 @@ func main() {
 // This function takes in a net.Conn struct and obtains the header value from it. Following this, it will return a response
 func handleConnection(conn net.Conn) {
 	// 3 parts to our response
-	var message_size int32
+	// var message_size int32
 	var correlation_id int32 // This is part of the response header
 	var request_api_version int16
 	var request_api_key int16
@@ -59,7 +59,7 @@ func handleConnection(conn net.Conn) {
 	}
 
 	// message_size is first 4 bytes
-	message_size = int32(binary.BigEndian.Uint32(buffer[0:4])) // A number value representing the number of bits/bytes including the 32 bits of the message_size portion!
+	// message_size = int32(binary.BigEndian.Uint32(buffer[0:4])) // A number value representing the number of bits/bytes including the 32 bits of the message_size portion!
 	// Now we need to parse so that of the 12 bytes we have, we take the 8th through 11th bytes
 	correlation_id = int32(binary.BigEndian.Uint32(buffer[8:12]))     // 4 bytes
 	request_api_version = int16(binary.BigEndian.Uint16(buffer[6:8])) // 2 bytes
