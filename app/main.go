@@ -91,13 +91,14 @@ func handleConnection(conn net.Conn) {
 		os.Exit(1)
 	}
 
+	binary.Write(conn, binary.BigEndian, int16(3)) //min version
+	binary.Write(conn, binary.BigEndian, int16(4)) //max version
+
 }
 
 // Check that we're dealing with API version 4 or above!
 func valid_version(api_version int16) int16 {
 	if api_version > 4 {
-		return 35
-	} else if api_version < 4 {
 		return 35
 	}
 	return 0
