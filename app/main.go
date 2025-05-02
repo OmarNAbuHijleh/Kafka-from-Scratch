@@ -74,7 +74,7 @@ func handleConnection(conn net.Conn) {
 	binary.Write(conn, binary.BigEndian, request_api_key) // 2 bytes
 	binary.Write(conn, binary.BigEndian, int16(3))        //min version - 2 bytes
 	binary.Write(conn, binary.BigEndian, int16(4))        //max version - 2 bytes
-	binary.Write(conn, binary.BigEndian, int32(0))        // throttle time - 4 bytes
+	// binary.Write(conn, binary.BigEndian, int32(0))        // throttle time - 4 bytes
 
 }
 
