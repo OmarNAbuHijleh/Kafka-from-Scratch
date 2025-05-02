@@ -59,7 +59,7 @@ func handleConnection(conn net.Conn) {
 	}
 
 	// message_size is first 4 bytes
-	message_size = int32(binary.BigEndian.Uint32(buffer[0:4])) // A number value representing the number of bits/bytes including the 32 bits of the message_size portion!
+	message_size = int32(binary.BigEndian.Uint32(buffer[0:4])) // A number representing the size of the rest of the message
 	// Now we need to parse so that of the 12 bytes we have, we take the 8th through 11th bytes
 	correlation_id = int32(binary.BigEndian.Uint32(buffer[8:12]))     // 4 bytes
 	request_api_version = int16(binary.BigEndian.Uint16(buffer[6:8])) // 2 bytes
@@ -68,13 +68,35 @@ func handleConnection(conn net.Conn) {
 	//Now we want to send the binary values
 	binary.Write(conn, binary.BigEndian, message_size)   // 4 bytes in length. The value we write may be subject to change
 	binary.Write(conn, binary.BigEndian, correlation_id) // 4 bytes
+
+	//API Versioning
 	api_error_code := valid_version(request_api_version)
 	binary.Write(conn, binary.BigEndian, api_error_code) // 2 bytes
 
+	// we need to write the following
+	// 1.) Array Length as a varint. It's the length of the API Versions array + 1
+	binary.Write(conn, binary.BigEndian, uint8(3+1)) // Default is 4? - 1 byte
+
+	// API Version 1 info:
 	binary.Write(conn, binary.BigEndian, request_api_key) // 2 bytes
 	binary.Write(conn, binary.BigEndian, int16(3))        //min version - 2 bytes
 	binary.Write(conn, binary.BigEndian, int16(4))        //max version - 2 bytes
-	// binary.Write(conn, binary.BigEndian, int32(0))        // throttle time - 4 bytes
+	binary.Write(conn, binary.BigEndian, int8(0))         // Tag buffer - 1 byte
+
+	// API Version 2 info:
+	binary.Write(conn, binary.BigEndian, request_api_key) // 2 bytes
+	binary.Write(conn, binary.BigEndian, int16(3))        //min version - 2 bytes
+	binary.Write(conn, binary.BigEndian, int16(4))        //max version - 2 bytes
+	binary.Write(conn, binary.BigEndian, int8(0))         // Tag buffer - 1 byte
+
+	// API Version 3 info:
+	binary.Write(conn, binary.BigEndian, request_api_key) // 2 bytes
+	binary.Write(conn, binary.BigEndian, int16(3))        //min version - 2 bytes
+	binary.Write(conn, binary.BigEndian, int16(4))        //max version - 2 bytes
+	binary.Write(conn, binary.BigEndian, int8(0))         // Tag buffer - 1 byte
+
+	binary.Write(conn, binary.BigEndian, int32(0)) // throttle time - 4 bytes
+	binary.Write(conn, binary.BigEndian, int8(0))  // Tag buffer - 1 byte
 
 }
 
