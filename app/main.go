@@ -55,7 +55,7 @@ func handleConnection(conn net.Conn) {
 	// correlationID is part of the header, where it is the 32nd through 64th bits, then we know that bits 64-86 are the necessary bits
 	message_size = 0
 
-	buffer := make([]byte, 12) // We need to take in 12 bytes
+	buffer := make([]byte, 10) // We need to take in 12 bytes
 	_, err := conn.Read(buffer)
 	if err != nil {
 		fmt.Println("Failed to read message: ", err)
