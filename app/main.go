@@ -59,43 +59,24 @@ func handleConnection(conn net.Conn) {
 	}
 
 	// message_size is first 4 bytes
-	message_size = int32(binary.BigEndian.Uint32(buffer[0:4]))
+	message_size = int32(binary.BigEndian.Uint32(buffer[0:4])) // A number value representing the number of bits/bytes including the 32 bits of the message_size portion!
 	// Now we need to parse so that of the 12 bytes we have, we take the 8th through 11th bytes
-	correlation_id = int32(binary.BigEndian.Uint32(buffer[8:12]))
-	request_api_version = int16(binary.BigEndian.Uint16(buffer[6:8]))
-	request_api_key = int16(binary.BigEndian.Uint16(buffer[4:6]))
+	correlation_id = int32(binary.BigEndian.Uint32(buffer[8:12]))     // 4 bytes
+	request_api_version = int16(binary.BigEndian.Uint16(buffer[6:8])) // 2 bytes
+	request_api_key = int16(binary.BigEndian.Uint16(buffer[4:6]))     // 2 bytes
 
 	//Now we want to send the binary values
-	err = binary.Write(conn, binary.BigEndian, message_size)
-	if err != nil {
-		fmt.Println("Failed to write the message size with error: ", err)
-		os.Exit(1)
-	}
-
-	err = binary.Write(conn, binary.BigEndian, correlation_id)
-	if err != nil {
-		fmt.Println("Failed to write the correlation ID with error: ", err)
-		os.Exit(1)
-	}
-
+	// binary.Write(conn, binary.BigEndian, message_size)   // 4 bytes in length. The value we write may be subject to change
+	binary.Write(conn, binary.BigEndian, int32(20))      // 4 bytes in length. The value we write may be subject to change
+	binary.Write(conn, binary.BigEndian, correlation_id) // 4 bytes
 	api_error_code := valid_version(request_api_version)
-	err = binary.Write(conn, binary.BigEndian, api_error_code)
-	if err != nil {
-		fmt.Println("Failed to write error reponse: ", err)
-		os.Exit(1)
-	}
+	binary.Write(conn, binary.BigEndian, api_error_code) // 2 bytes
 
-	err = binary.Write(conn, binary.BigEndian, request_api_key)
-	if err != nil {
-		fmt.Println("Failed to write request_api_key: ", err)
-		os.Exit(1)
-	}
+	binary.Write(conn, binary.BigEndian, request_api_key) // 2 bytes
+	binary.Write(conn, binary.BigEndian, int16(3))        //min version - 2 bytes
+	binary.Write(conn, binary.BigEndian, int16(4))        //max version - 2 bytes
+	binary.Write(conn, binary.BigEndian, int32(0))        // throttle time - 4 bytes
 
-	binary.Write(conn, binary.BigEndian, int16(3)) //min version
-	binary.Write(conn, binary.BigEndian, int16(4)) //max version
-	binary.Write(conn, binary.BigEndian, int8(0))  // tagged fileds
-	binary.Write(conn, binary.BigEndian, int32(0)) // throttle time
-	binary.Write(conn, binary.BigEndian, int8(0))  // tagged fileds
 }
 
 // Check that we're dealing with API version 4 or above!
