@@ -40,7 +40,7 @@ func handleConnection(conn net.Conn) {
 	// 3 parts to our response
 	var message_size int32
 	var correlation_id int32 // This is part of the response header
-	var request_api_version int32
+	var request_api_version int16
 
 	/*
 		Steps:
@@ -65,7 +65,7 @@ func handleConnection(conn net.Conn) {
 
 	// Now we need to parse so that of the 12 bytes we have, we take the 8th through 11th bytes
 	correlation_id = int32(binary.BigEndian.Uint32(buffer[8:12]))
-	request_api_version = int32(binary.BigEndian.Uint32(buffer[6:8]))
+	request_api_version = int16(binary.BigEndian.Uint16(buffer[6:8]))
 
 	//Now we want to send the binary values
 	err = binary.Write(conn, binary.BigEndian, message_size)
@@ -89,7 +89,7 @@ func handleConnection(conn net.Conn) {
 
 }
 
-func valid_version(api_version int32) int32 {
+func valid_version(api_version int16) int16 {
 	if api_version > 4 {
 		return 35
 	}
