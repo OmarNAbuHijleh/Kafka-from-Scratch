@@ -37,8 +37,8 @@ func handleConnection(conn net.Conn) {
 	// 3 parts to our response
 	// var message_size int32
 	var correlation_id int32 // This is part of the response header
-	var request_api_version int16
-	var request_api_key int16
+	var request_api_version uint16
+	var request_api_key uint16
 
 	/*
 		Steps:
@@ -62,9 +62,9 @@ func handleConnection(conn net.Conn) {
 	// message_size is first 4 bytes
 	// message_size = int32(binary.BigEndian.Uint32(buffer[0:4])) // A number representing the size of the rest of the message
 	// Now we need to parse so that of the 12 bytes we have, we take the 8th through 11th bytes
-	correlation_id = int32(binary.BigEndian.Uint32(buffer[8:12]))     // 4 bytes
-	request_api_version = int16(binary.BigEndian.Uint16(buffer[6:8])) // 2 bytes
-	request_api_key = int16(binary.BigEndian.Uint16(buffer[4:6]))     // 2 bytes
+	correlation_id = int32(binary.BigEndian.Uint32(buffer[8:12]))      // 4 bytes
+	request_api_version = uint16(binary.BigEndian.Uint16(buffer[6:8])) // 2 bytes
+	request_api_key = uint16(binary.BigEndian.Uint16(buffer[4:6]))     // 2 bytes
 
 	var response bytes.Buffer //This is where we'll store all the elements of the response. It's a buffer prior to writing out the response!
 
@@ -110,7 +110,7 @@ func handleConnection(conn net.Conn) {
 }
 
 // Check that we're dealing with API version 4 or above!
-func valid_version(api_version int16) int16 {
+func valid_version(api_version uint16) uint16 {
 	if api_version > 4 {
 		return 35
 	}
