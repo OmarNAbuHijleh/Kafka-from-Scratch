@@ -58,7 +58,7 @@ func handleConnection(conn net.Conn) {
 		_, err := io.ReadFull(conn, buffer) //conn.Read(buffer)
 		if err != nil {
 			fmt.Println("Failed to read message: ", err)
-			os.Exit(1)
+			return
 		}
 
 		// message_size is first 4 bytes
