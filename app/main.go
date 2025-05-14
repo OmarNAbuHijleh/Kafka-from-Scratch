@@ -105,10 +105,10 @@ func eighteen_response_block(bytesBuffer *bytes.Buffer, request_api_key uint16) 
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))        // Tag buffer - 1 byte
 
 	// API Version 3 info:
-	binary.Write(bytesBuffer, binary.BigEndian, request_api_key) // 2 bytes
-	binary.Write(bytesBuffer, binary.BigEndian, uint16(3))       //min version - 2 bytes
-	binary.Write(bytesBuffer, binary.BigEndian, uint16(4))       //max version - 2 bytes
-	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))        // Tag buffer - 1 byte
+	binary.Write(bytesBuffer, binary.BigEndian, uint16(75)) // 2 bytes
+	binary.Write(bytesBuffer, binary.BigEndian, uint16(0))  //min version - 2 bytes
+	binary.Write(bytesBuffer, binary.BigEndian, uint16(0))  //max version - 2 bytes
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))   // Tag buffer - 1 byte
 
 	binary.Write(bytesBuffer, binary.BigEndian, uint32(0)) // throttle time - 4 bytes
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))  // Tag buffer - 1 byte
