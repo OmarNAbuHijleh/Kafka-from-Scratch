@@ -41,67 +41,45 @@ func handleConnection(conn net.Conn) {
 		var correlation_id int32 // This is part of the response header
 		var request_api_version uint16
 		var request_api_key uint16
+		var received_message_size uint32 // this is the size of the request in bytes
 
-		/*
-			Steps:
-			1.) The client generates a correlation_id
-			2.) The client sends a request that includes the correlation_id
-			3.) The server sends a response that includes the same correlation_id
-			4.) The client receives the response and matches the received correlation_id to the original request
-		*/
+		// Getting the message size:
+		received_message_buffer := make([]byte, 4)
+		_, err := io.ReadFull(conn, received_message_buffer)
+		if err != nil {
+			fmt.Println("Failed to receive message input size")
+			return
+		}
 
-		// Getting the correlation ID:
-
-		//Since we know the message size is 4 bytes long (i.e. 32 bits . . .) and the
-		// correlationID is part of the header, where it is the 32nd through 64th bits, then we know that bits 64-86 are the necessary bits
-		buffer := make([]byte, 39)          // We need to take in 12 bytes
-		_, err := io.ReadFull(conn, buffer) //conn.Read(buffer)
+		// Now we create the next buffer based on the rest of the message's size
+		received_message_size = binary.BigEndian.Uint32(received_message_buffer)
+		buffer := make([]byte, received_message_size)
+		_, err = io.ReadFull(conn, buffer) //conn.Read(buffer)
 		if err != nil {
 			fmt.Println("Failed to read message: ", err)
 			return
 		}
 
-		// message_size is first 4 bytes
 		// message_size = int32(binary.BigEndian.Uint32(buffer[0:4])) // A number representing the size of the rest of the message
 		// Now we need to parse so that of the 12 bytes we have, we take the 8th through 11th bytes
-		correlation_id = int32(binary.BigEndian.Uint32(buffer[8:12]))      // 4 bytes
-		request_api_version = uint16(binary.BigEndian.Uint16(buffer[6:8])) // 2 bytes
-		request_api_key = uint16(binary.BigEndian.Uint16(buffer[4:6]))     // 2 bytes
+		request_api_key = uint16(binary.BigEndian.Uint16(buffer[0:2]))     // 2 bytes
+		request_api_version = uint16(binary.BigEndian.Uint16(buffer[2:4])) // 2 bytes
+		correlation_id = int32(binary.BigEndian.Uint32(buffer[4:8]))       // 4 bytes
 
 		var response bytes.Buffer //This is where we'll store all the elements of the response. It's a buffer prior to writing out the response!
 
-		//Now we want to send the binary values
-		// binary.Write(conn, binary.BigEndian, message_size)   // 4 bytes in length. The value we write may be subject to change
-
+		//The next part depends on API versioning
 		binary.Write(&response, binary.BigEndian, correlation_id) // 4 bytes
 		//API Versioning
-		api_error_code := valid_version(request_api_version)
+		api_error_code := valid_version(request_api_key, request_api_version)
 		binary.Write(&response, binary.BigEndian, api_error_code) // 2 bytes
 
-		// we need to write the following
-		// 1.) Array Length as a varint. It's the length of the API Versions array + 1
-		binary.Write(&response, binary.BigEndian, uint8(3+1)) // Default is 4? - 1 byte
-
-		// API Version 1 info:
-		binary.Write(&response, binary.BigEndian, request_api_key) // 2 bytes
-		binary.Write(&response, binary.BigEndian, uint16(3))       //min version - 2 bytes
-		binary.Write(&response, binary.BigEndian, uint16(4))       //max version - 2 bytes
-		binary.Write(&response, binary.BigEndian, uint8(0))        // Tag buffer - 1 byte
-
-		// API Version 2 info:
-		binary.Write(&response, binary.BigEndian, request_api_key) // 2 bytes
-		binary.Write(&response, binary.BigEndian, uint16(3))       //min version - 2 bytes
-		binary.Write(&response, binary.BigEndian, uint16(4))       //max version - 2 bytes
-		binary.Write(&response, binary.BigEndian, uint8(0))        // Tag buffer - 1 byte
-
-		// API Version 3 info:
-		binary.Write(&response, binary.BigEndian, request_api_key) // 2 bytes
-		binary.Write(&response, binary.BigEndian, uint16(3))       //min version - 2 bytes
-		binary.Write(&response, binary.BigEndian, uint16(4))       //max version - 2 bytes
-		binary.Write(&response, binary.BigEndian, uint8(0))        // Tag buffer - 1 byte
-
-		binary.Write(&response, binary.BigEndian, uint32(0)) // throttle time - 4 bytes
-		binary.Write(&response, binary.BigEndian, uint8(0))  // Tag buffer - 1 byte
+		// Now we need to create the rest of the response depending on the API Key Received
+		if request_api_key == 18 {
+			eighteen_response_block(&response, request_api_key)
+		} else if request_api_key == 75 {
+			seventy_five_response_block(&response, request_api_key)
+		}
 
 		// Now that we have the buffer we can do the following
 		payload_bytes := response.Bytes()
@@ -111,9 +89,40 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
+func eighteen_response_block(bytesBuffer *bytes.Buffer, request_api_key uint16) {
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(3+1)) // Default is 4? - 1 byte
+
+	// API Version 1 info:
+	binary.Write(bytesBuffer, binary.BigEndian, request_api_key) // 2 bytes
+	binary.Write(bytesBuffer, binary.BigEndian, uint16(3))       //min version - 2 bytes
+	binary.Write(bytesBuffer, binary.BigEndian, uint16(4))       //max version - 2 bytes
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))        // Tag buffer - 1 byte
+
+	// API Version 2 info:
+	binary.Write(bytesBuffer, binary.BigEndian, request_api_key) // 2 bytes
+	binary.Write(bytesBuffer, binary.BigEndian, uint16(3))       //min version - 2 bytes
+	binary.Write(bytesBuffer, binary.BigEndian, uint16(4))       //max version - 2 bytes
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))        // Tag buffer - 1 byte
+
+	// API Version 3 info:
+	binary.Write(bytesBuffer, binary.BigEndian, request_api_key) // 2 bytes
+	binary.Write(bytesBuffer, binary.BigEndian, uint16(3))       //min version - 2 bytes
+	binary.Write(bytesBuffer, binary.BigEndian, uint16(4))       //max version - 2 bytes
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))        // Tag buffer - 1 byte
+
+	binary.Write(bytesBuffer, binary.BigEndian, uint32(0)) // throttle time - 4 bytes
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))  // Tag buffer - 1 byte
+}
+
+func seventy_five_response_block(bytesBuffer *bytes.Buffer, request_api_key uint16) {
+	// 97 bytes long for the block we write in this section
+	binary.Write(bytesBuffer, binary.BigEndian, request_api_key)
+}
+
 // Check that we're dealing with API version 4 or above!
-func valid_version(api_version uint16) uint16 {
-	if api_version > 4 {
+func valid_version(api_key uint16, api_version uint16) uint16 {
+	big_boolean := ((api_version > 4) && (api_key == 18)) || ((api_version != 0) && (api_key == 75))
+	if big_boolean {
 		return 35
 	}
 	return 0
