@@ -74,7 +74,6 @@ func handleConnection(conn net.Conn) {
 		// binary.Write(conn, binary.BigEndian, message_size)   // 4 bytes in length. The value we write may be subject to change
 
 		binary.Write(&response, binary.BigEndian, correlation_id) // 4 bytes
-
 		//API Versioning
 		api_error_code := valid_version(request_api_version)
 		binary.Write(&response, binary.BigEndian, api_error_code) // 2 bytes
