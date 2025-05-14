@@ -115,7 +115,6 @@ func eighteen_response_block(bytesBuffer *bytes.Buffer, request_api_key uint16) 
 }
 
 func seventy_five_response_block(bytesBuffer *bytes.Buffer, request_api_key uint16) {
-	// 97 bytes long for the block we write in this section
 	binary.Write(bytesBuffer, binary.BigEndian, request_api_key)
 }
 
