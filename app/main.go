@@ -121,7 +121,7 @@ func seventy_five_response_block(bytesBuffer *bytes.Buffer, request_api_key uint
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(2))  //Array length
 	binary.Write(bytesBuffer, binary.BigEndian, uint16(3))
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(4)) //Array length
-	binary.Write(bytesBuffer, binary.BigEndian, []byte("unknown-topic-saz"))
+	binary.Write(bytesBuffer, binary.BigEndian, []byte("foo"))
 	binary.Write(bytesBuffer, binary.BigEndian, make([]byte, 16))
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(1))
