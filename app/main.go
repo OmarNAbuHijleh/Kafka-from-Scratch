@@ -84,7 +84,7 @@ func handleConnection(conn net.Conn) {
 			client_id_length := binary.BigEndian.Uint16(buffer[8:10])
 			next_starting_point := 10 + client_id_length
 			client_id_contents := buffer[10:next_starting_point]
-			tag_buffered := binary.BigEndian.Uint16(buffer[next_starting_point : next_starting_point+1])
+			//tag_buffered := binary.BigEndian.Uint16(buffer[next_starting_point : next_starting_point+1])
 			next_starting_point += 1
 
 			seventy_five_response_block(&response, client_id_contents)
