@@ -66,16 +66,16 @@ func handleConnection(conn net.Conn) {
 		request_api_version = uint16(binary.BigEndian.Uint16(buffer[2:4])) // 2 bytes
 		correlation_id = int32(binary.BigEndian.Uint32(buffer[4:8]))       // 4 bytes
 
+		// Response portion of the code ---------------------------------------------------------------------------------------------------------------------------------
 		var response bytes.Buffer //This is where we'll store all the elements of the response. It's a buffer prior to writing out the response!
 
-		//The next part depends on API versioning
 		binary.Write(&response, binary.BigEndian, correlation_id) // 4 bytes
-		//API Versioning
-		api_error_code := valid_version(request_api_key, request_api_version)
-		binary.Write(&response, binary.BigEndian, api_error_code) // 2 bytes
 
-		// Now we need to create the rest of the response depending on the API Key Received
+		//The next part depends on API versioning
 		if request_api_key == 18 {
+			//API Versioning
+			api_error_code := valid_version(request_api_key, request_api_version)
+			binary.Write(&response, binary.BigEndian, api_error_code) // 2 bytes
 			eighteen_response_block(&response, request_api_key)
 		} else if request_api_key == 75 {
 			seventy_five_response_block(&response, request_api_key)
@@ -114,11 +114,29 @@ func eighteen_response_block(bytesBuffer *bytes.Buffer, request_api_key uint16) 
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))  // Tag buffer - 1 byte
 }
 
+// This is the response for
 func seventy_five_response_block(bytesBuffer *bytes.Buffer, request_api_key uint16) {
-	binary.Write(bytesBuffer, binary.BigEndian, request_api_key)
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))  // Tag buffer (1 bytes)
+	binary.Write(bytesBuffer, binary.BigEndian, uint32(0)) //throttle time
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(2))  //Array length
+	binary.Write(bytesBuffer, binary.BigEndian, uint16(3))
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(4)) //Array length
+	binary.Write(bytesBuffer, binary.BigEndian, []byte("foo"))
+	binary.Write(bytesBuffer, binary.BigEndian, make([]byte, 16))
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(1))
+
+	// topic authorized operations
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(13))
+	binary.Write(bytesBuffer, binary.BigEndian, uint16(248))
+
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(255))
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
 }
 
-// Check that we're dealing with API version 4 or above!
+// Check that we're dealing with API version that is valid for the message we're receiving
 func valid_version(api_key uint16, api_version uint16) uint16 {
 	big_boolean := ((api_version > 4) && (api_key == 18)) || ((api_version != 0) && (api_key == 75))
 	if big_boolean {
