@@ -126,6 +126,8 @@ func seventy_five_response_block(bytesBuffer *bytes.Buffer, request_api_key uint
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(1))
 
+	//minor change
+
 	// topic authorized operations
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(13))
