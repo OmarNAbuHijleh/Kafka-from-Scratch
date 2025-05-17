@@ -78,7 +78,16 @@ func handleConnection(conn net.Conn) {
 			binary.Write(&response, binary.BigEndian, api_error_code) // 2 bytes
 			eighteen_response_block(&response, request_api_key)
 		} else if request_api_key == 75 {
-			seventy_five_response_block(&response, request_api_key)
+			// Let's get the rest of the message we've received
+
+			//client ID
+			client_id_length := binary.BigEndian.Uint16(buffer[8:10])
+			next_starting_point := 10 + client_id_length
+			client_id_contents := buffer[10:next_starting_point]
+			tag_buffered := binary.BigEndian.Uint16(buffer[next_starting_point : next_starting_point+1])
+			next_starting_point += 1
+
+			seventy_five_response_block(&response, client_id_contents)
 		}
 
 		// Now that we have the buffer we can do the following
@@ -115,18 +124,17 @@ func eighteen_response_block(bytesBuffer *bytes.Buffer, request_api_key uint16) 
 }
 
 // This is the response for
-func seventy_five_response_block(bytesBuffer *bytes.Buffer, request_api_key uint16) {
+func seventy_five_response_block(bytesBuffer *bytes.Buffer, client_id_contents []byte) {
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))  // Tag buffer (1 bytes)
 	binary.Write(bytesBuffer, binary.BigEndian, uint32(0)) //throttle time
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(2))  //Array length
 	binary.Write(bytesBuffer, binary.BigEndian, uint16(3))
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(4)) //Array length
-	binary.Write(bytesBuffer, binary.BigEndian, []byte("foo"))
+	binary.Write(bytesBuffer, binary.BigEndian, client_id_contents)
+	// binary.Write(bytesBuffer, binary.BigEndian, []byte("foo"))
 	binary.Write(bytesBuffer, binary.BigEndian, make([]byte, 16))
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(1))
-
-	//minor change
 
 	// topic authorized operations
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
