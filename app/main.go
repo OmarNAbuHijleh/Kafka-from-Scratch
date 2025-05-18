@@ -67,16 +67,16 @@ func handleConnection(conn net.Conn) {
 		correlation_id = int32(binary.BigEndian.Uint32(buffer[4:8]))       // 4 bytes
 
 		// Response portion of the code ---------------------------------------------------------------------------------------------------------------------------------
-		var response bytes.Buffer //This is where we'll store all the elements of the response. It's a buffer prior to writing out the response!
+		response := bytes.NewBuffer(make([]byte, 0, 1024)) //This is where we'll store all the elements of the response. It's a buffer prior to writing out the response!
 
-		binary.Write(&response, binary.BigEndian, correlation_id) // 4 bytes
+		binary.Write(response, binary.BigEndian, correlation_id) // 4 bytes
 
 		//The next part depends on API versioning
 		if request_api_key == 18 {
 			//API Versioning
 			api_error_code := valid_version(request_api_key, request_api_version)
-			binary.Write(&response, binary.BigEndian, api_error_code) // 2 bytes
-			eighteen_response_block(&response, request_api_key)
+			binary.Write(response, binary.BigEndian, api_error_code) // 2 bytes
+			eighteen_response_block(response, request_api_key)
 		} else if request_api_key == 75 {
 			// Let's get the rest of the message we've received
 			var start_idx uint16
@@ -114,7 +114,7 @@ func handleConnection(conn net.Conn) {
 			start_idx = end_idx
 			// cursor := uint8(buffer[start_idx])
 
-			seventy_five_response_block(&response, topic_names)
+			seventy_five_response_block(response, topic_names)
 		}
 
 		// Now that we have the buffer we can do the following
