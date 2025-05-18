@@ -152,24 +152,25 @@ func eighteen_response_block(bytesBuffer *bytes.Buffer, request_api_key uint16) 
 
 // This is the response for
 func seventy_five_response_block(bytesBuffer *bytes.Buffer, topic_names []string) {
-	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))  // Tag buffer (1 bytes)
-	binary.Write(bytesBuffer, binary.BigEndian, uint32(0)) //throttle time
-	binary.Write(bytesBuffer, binary.BigEndian, uint8(2))  //Array length
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))                  // Tag buffer (1 bytes)
+	binary.Write(bytesBuffer, binary.BigEndian, uint32(0))                 //throttle time
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(len(topic_names)+1)) //Array length
 
 	for _, topic := range topic_names {
 		binary.Write(bytesBuffer, binary.BigEndian, uint16(3))
-		binary.Write(bytesBuffer, binary.BigEndian, uint8(len(topic)+1)) //Array length
+		binary.Write(bytesBuffer, binary.BigEndian, uint8(len(topic))) //Array length
 		binary.Write(bytesBuffer, binary.BigEndian, []byte(topic))
 		binary.Write(bytesBuffer, binary.BigEndian, make([]byte, 16)) //topic id
 		binary.Write(bytesBuffer, binary.BigEndian, uint8(0))         // is internal
 
 		// next is the partitions array
 		binary.Write(bytesBuffer, binary.BigEndian, uint8(1))
+		// Authorized Operations
 		binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
 		binary.Write(bytesBuffer, binary.BigEndian, uint8(13))
 		binary.Write(bytesBuffer, binary.BigEndian, uint16(248))
+		//Tag buffer
 		binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
-
 	}
 
 	// topic authorized operations
