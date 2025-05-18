@@ -96,15 +96,15 @@ func handleConnection(conn net.Conn) {
 			array_length := uint8(buffer[start_idx]) // 1 byte
 			start_idx++
 
-			// Iterate through the top - may need to check topic names
+			// Iterate through the top
 			topic_names := make([]string, array_length-1)
 
 			var i uint8 = 0
 			for i < array_length-1 {
 				name_length := uint16(buffer[start_idx])
 				start_idx++
-				topic_names[i] = string(buffer[start_idx : start_idx+name_length])
-				start_idx += name_length + 1 // Add an extra 1 because of the tag buffer
+				topic_names[i] = string(buffer[start_idx : start_idx+name_length-1])
+				start_idx += name_length // Add an extra 1 because of the tag buffer
 				i++
 			}
 			// Response partition limit
