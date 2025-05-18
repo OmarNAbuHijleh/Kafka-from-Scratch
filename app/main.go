@@ -175,7 +175,7 @@ func seventy_five_response_block(bytesBuffer *bytes.Buffer, topic_names []string
 
 	// topic authorized operations
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(255))
-	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
+	binary.Write(bytesBuffer, binary.BigEndian, uint16(0))
 }
 
 // Check that we're dealing with API version that is valid for the message we're receiving
