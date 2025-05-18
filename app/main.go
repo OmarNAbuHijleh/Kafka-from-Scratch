@@ -97,10 +97,10 @@ func handleConnection(conn net.Conn) {
 			start_idx++
 
 			// Iterate through the top
-			topic_names := make([]string, array_length)
+			topic_names := make([]string, array_length-1)
 
-			var i uint8 = 1
-			for i < array_length {
+			var i uint8 = 0
+			for i < array_length-1 {
 				name_length := uint16(buffer[start_idx])
 				start_idx++
 				topic_names[i] = string(buffer[start_idx : start_idx+name_length])
