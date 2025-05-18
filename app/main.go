@@ -119,7 +119,7 @@ func handleConnection(conn net.Conn) {
 
 		// Now that we have the buffer we can do the following
 		payload_bytes := response.Bytes()
-		response_message_size_bytes := uint32(len(payload_bytes))
+		response_message_size_bytes := uint32(len(payload_bytes) - 1)
 		binary.Write(conn, binary.BigEndian, response_message_size_bytes)
 		conn.Write(payload_bytes)
 	}
