@@ -96,7 +96,7 @@ func handleConnection(conn net.Conn) {
 			array_length := uint8(buffer[start_idx]) // 1 byte
 			start_idx++
 
-			// Iterate through the top
+			// Iterate through the top - may need to check topic names
 			topic_names := make([]string, array_length-1)
 
 			var i uint8 = 0
