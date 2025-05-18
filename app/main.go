@@ -79,15 +79,42 @@ func handleConnection(conn net.Conn) {
 			eighteen_response_block(&response, request_api_key)
 		} else if request_api_key == 75 {
 			// Let's get the rest of the message we've received
+			var start_idx uint16
 
-			//client ID
-			client_id_length := binary.BigEndian.Uint16(buffer[8:10])
-			next_starting_point := 10 + client_id_length
-			client_id_contents := buffer[10:next_starting_point]
-			//tag_buffered := binary.BigEndian.Uint16(buffer[next_starting_point : next_starting_point+1])
-			next_starting_point += 1
+			//client ID - 2 bytes for the length parameter, followed by a variable number of bites for what the length equals
+			client_id_length := uint16(binary.BigEndian.Uint16(buffer[8:10]))
 
-			seventy_five_response_block(&response, client_id_contents)
+			start_idx = 10
+			end_idx := start_idx + client_id_length
+			// client_id_contents := string(buffer[start_idx:end_idx])
+
+			// For the tag buffer (1 byte)
+			start_idx = end_idx + 1
+
+			// topics array
+			end_idx = start_idx + 1
+			array_length := uint8(buffer[start_idx]) // 1 byte
+			start_idx++
+
+			// Iterate through the top
+			topic_names := make([]string, array_length)
+
+			var i uint8 = 1
+			for i < array_length {
+				name_length := uint16(buffer[start_idx])
+				start_idx++
+				topic_names[i] = string(buffer[start_idx : start_idx+name_length])
+				start_idx += name_length + 1 // Add an extra 1 because of the tag buffer
+				i++
+			}
+			// Response partition limit
+			end_idx = start_idx + 4
+			// response_partition_limit := uint32(binary.BigEndian.Uint32(buffer[start_idx:end_idx]))
+
+			start_idx = end_idx
+			// cursor := uint8(buffer[start_idx])
+
+			seventy_five_response_block(&response, topic_names)
 		}
 
 		// Now that we have the buffer we can do the following
@@ -124,24 +151,26 @@ func eighteen_response_block(bytesBuffer *bytes.Buffer, request_api_key uint16) 
 }
 
 // This is the response for
-func seventy_five_response_block(bytesBuffer *bytes.Buffer, client_id_contents []byte) {
+func seventy_five_response_block(bytesBuffer *bytes.Buffer, topic_names []string) {
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))  // Tag buffer (1 bytes)
 	binary.Write(bytesBuffer, binary.BigEndian, uint32(0)) //throttle time
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(2))  //Array length
-	binary.Write(bytesBuffer, binary.BigEndian, uint16(3))
-	binary.Write(bytesBuffer, binary.BigEndian, uint8(4)) //Array length
-	binary.Write(bytesBuffer, binary.BigEndian, client_id_contents)
-	// binary.Write(bytesBuffer, binary.BigEndian, []byte("foo"))
-	binary.Write(bytesBuffer, binary.BigEndian, make([]byte, 16))
-	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
-	binary.Write(bytesBuffer, binary.BigEndian, uint8(1))
+
+	for _, topic := range topic_names {
+		binary.Write(bytesBuffer, binary.BigEndian, uint16(3))
+		binary.Write(bytesBuffer, binary.BigEndian, uint8(len(topic))) //Array length
+		binary.Write(bytesBuffer, binary.BigEndian, []byte(topic))
+		binary.Write(bytesBuffer, binary.BigEndian, make([]byte, 16))
+		binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
+		binary.Write(bytesBuffer, binary.BigEndian, uint8(1))
+		binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
+		binary.Write(bytesBuffer, binary.BigEndian, uint8(13))
+		binary.Write(bytesBuffer, binary.BigEndian, uint16(248))
+		binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
+
+	}
 
 	// topic authorized operations
-	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
-	binary.Write(bytesBuffer, binary.BigEndian, uint8(13))
-	binary.Write(bytesBuffer, binary.BigEndian, uint16(248))
-
-	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(255))
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
 }
