@@ -119,7 +119,7 @@ func handleConnection(conn net.Conn) {
 
 		// Now that we have the buffer we can do the following
 		payload_bytes := response.Bytes()
-		response_message_size_bytes := uint32(len(payload_bytes))
+		response_message_size_bytes := uint32(len(payload_bytes) - 1)
 		binary.Write(conn, binary.BigEndian, response_message_size_bytes)
 		conn.Write(payload_bytes)
 	}
@@ -175,7 +175,7 @@ func seventy_five_response_block(bytesBuffer *bytes.Buffer, topic_names []string
 
 	// topic authorized operations
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(255))
-	binary.Write(bytesBuffer, binary.BigEndian, uint16(0))
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))
 }
 
 // Check that we're dealing with API version that is valid for the message we're receiving
