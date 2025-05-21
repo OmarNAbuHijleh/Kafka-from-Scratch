@@ -10,12 +10,17 @@ import (
 	"io"
 )
 
-file, err := os.ReadFull("/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log")
+file, err := os.ReadAll("/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log")
 if err != nil{
 	fmt.Println("Error opening the file")
 }
 defer file.Close()
-//comment
+
+data, err := io.ReadAll(file)
+if err!=nil{
+	fmt.Println("Error Reading file")
+}
+fmt.Println("File Contents")
 fmt.Println(string(file))
 
 func main() {
