@@ -15,7 +15,7 @@ if err != nil{
 	fmt.Println("Error opening the file")
 }
 defer file.Close()
-
+//comment
 fmt.Println(string(file))
 
 func main() {
