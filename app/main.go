@@ -19,6 +19,7 @@ func main() {
 		fmt.Println("Error reading file")
 	}
 	fmt.Println(string(data))
+	fmt.Println()
 	// file, err := os.ReadAll("/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log")
 	// if err != nil {
 	// 	fmt.Println("Error opening the file")
