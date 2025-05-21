@@ -11,6 +11,7 @@ import (
 
 // var file os.File
 var data []byte
+var err error
 
 func main() {
 	data, err = os.ReadFile("/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log")
