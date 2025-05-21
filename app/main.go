@@ -9,23 +9,27 @@ import (
 	"os"
 )
 
-var file os.File
+// var file os.File
 var data []byte
 
 func main() {
-
-	file, err := os.ReadAll("/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log")
+	data, err = os.ReadFile("/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log")
 	if err != nil {
-		fmt.Println("Error opening the file")
+		fmt.Println("Error reading file")
 	}
-	defer file.Close()
+	fmt.Println(string(data))
+	// file, err := os.ReadAll("/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log")
+	// if err != nil {
+	// 	fmt.Println("Error opening the file")
+	// }
+	// defer file.Close()
 
-	data, err := io.ReadAll(file)
-	if err != nil {
-		fmt.Println("Error Reading file")
-	}
-	fmt.Println("File Contents")
-	fmt.Println(string(file))
+	// data, err := io.ReadAll(file)
+	// if err != nil {
+	// 	fmt.Println("Error Reading file")
+	// }
+	// fmt.Println("File Contents")
+	// fmt.Println(string(data))
 
 	// First create a server that can connect on port 9092
 	fmt.Println("Creating listener . . . ")
