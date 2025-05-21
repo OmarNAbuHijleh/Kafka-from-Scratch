@@ -7,7 +7,16 @@ import (
 	"io"
 	"net"
 	"os"
+	"io"
 )
+
+file, err := os.ReadFull("/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log")
+if err != nil{
+	fmt.Println("Error opening the file")
+}
+defer file.Close()
+
+fmt.Println(string(file))
 
 func main() {
 	// First create a server that can connect on port 9092
