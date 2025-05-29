@@ -18,8 +18,7 @@ func main() {
 	if err != nil {
 		fmt.Println("Error reading file")
 	}
-	fmt.Println(string(data))
-	fmt.Println()
+
 	// file, err := os.ReadAll("/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log")
 	// if err != nil {
 	// 	fmt.Println("Error opening the file")
@@ -68,7 +67,7 @@ func handleConnection(conn net.Conn) {
 
 		// Getting the message size:
 		received_message_buffer := make([]byte, 4)
-		_, err := io.ReadFull(conn, received_message_buffer)
+		_, err = io.ReadFull(conn, received_message_buffer)
 		if err != nil {
 			fmt.Println("Failed to receive message input size")
 			return
