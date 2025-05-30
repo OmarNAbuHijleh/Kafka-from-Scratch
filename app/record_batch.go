@@ -8,23 +8,23 @@ import "encoding/binary"
 // )
 
 type Value struct {
-	frameVersion                byte   //integer indicating the version format of the record
-	recordType                  byte   //integer explaining the type of the record
-	versionFeatureLevel         byte   // indicates the version of the feature type record
-	partitionID                 []byte //4 byte ID of the partition
-	uuid                        []byte //16 byte uuid
-	replicaArrayLength          int64  //varint length of replica array. Compact Int and replicaArray length is actually this value - 1
-	replicaArray                []byte // 4 byte big endian integers containing replicaID of the replicas
-	lengthInSyncReplicaArray    int64  //varint length of replica sync array. Compact Int and replicaSyncArray length is actually this value - 1
-	inSyncReplicaArray          []byte // 4 byte big endian integers containing replicaID of in sync replicas
-	lengthRemovingReplicasArray int64  //varint length of removing replicas array. Compact Int and replicaSyncArray length is actually this value - 1
-	lengthAddingReplicasArray   int64  //varint length of adding replicas array. Compact Int and replicaSyncArray length is actually this value - 1
-	leader                      []byte // 4 byte big endian integer indicating replicaID of the leader
-	leaderEpoch                 []byte // 4 byte big endian integer indicating the epoch of the leader
-	partitionEpoch              []byte // 4 byte big endian integer indicating the epoch of the partition
-	lengthOfDirectoriesArr      int64  // unsigned var size integer indicating # directories in array. length is actually this value - 1 since compact
-	directoriesArray            []byte //16 byte raw byte arrays
-	taggedFieldsCount           int64  //unsigned var size integer
+	frameVersion                byte     //integer indicating the version format of the record
+	recordType                  byte     //integer explaining the type of the record
+	versionFeatureLevel         byte     // indicates the version of the feature type record
+	partitionID                 []byte   //4 byte ID of the partition
+	uuid                        []byte   //16 byte uuid
+	replicaArrayLength          int64    //varint length of replica array. Compact Int and replicaArray length is actually this value - 1
+	replicaArray                []uint32 // 4 byte big endian integers containing replicaID of the replicas
+	lengthInSyncReplicaArray    int64    //varint length of replica sync array. Compact Int and replicaSyncArray length is actually this value - 1
+	inSyncReplicaArray          []byte   // 4 byte big endian integers containing replicaID of in sync replicas
+	lengthRemovingReplicasArray int64    //varint length of removing replicas array. Compact Int and replicaSyncArray length is actually this value - 1
+	lengthAddingReplicasArray   int64    //varint length of adding replicas array. Compact Int and replicaSyncArray length is actually this value - 1
+	leader                      []byte   // 4 byte big endian integer indicating replicaID of the leader
+	leaderEpoch                 []byte   // 4 byte big endian integer indicating the epoch of the leader
+	partitionEpoch              []byte   // 4 byte big endian integer indicating the epoch of the partition
+	lengthOfDirectoriesArr      int64    // unsigned var size integer indicating # directories in array. length is actually this value - 1 since compact
+	directoriesArray            []byte   //16 byte raw byte arrays
+	taggedFieldsCount           int64    //unsigned var size integer
 }
 
 type Record struct {
@@ -166,6 +166,42 @@ func createClusterMetaData(input_bytes []byte) []RecordBatch {
 			// frame version
 			val_obj.frameVersion = input_bytes[currentByte]
 			currentByte++
+
+			// type
+			val_obj.recordType = input_bytes[currentByte]
+			currentByte++
+
+			// version
+			val_obj.versionFeatureLevel = input_bytes[currentByte]
+			currentByte++
+
+			// partition id
+			val_obj.partitionID = input_bytes[currentByte : currentByte+4] // copy(val_obj.partitionID, input_bytes[currentByte:currentByte+4])
+			currentByte += 4
+
+			// topic uuid
+			val_obj.uuid = input_bytes[currentByte : currentByte+16]
+			currentByte += 16
+
+			// replica array length
+			ending_byte = currentByte
+			for hasMSBSet(input_bytes[ending_byte]) {
+				ending_byte += 1
+			}
+			val_obj.replicaArrayLength = ZigZagDecode(Decode7BitLittleEndian(input_bytes[currentByte : ending_byte+1])) // We now have the value of the length. We need to pass it through a zigzag decoder
+			currentByte = ending_byte + 1
+
+			// replica array
+
+			var counter int64 = 0
+			var tmp_val uint32
+			val_obj.replicaArray = make([]uint32, 0, val_obj.replicaArrayLength)
+			for counter < val_obj.replicaArrayLength {
+				tmp_val = binary.BigEndian.Uint32(input_bytes[currentByte : currentByte+4])
+				val_obj.replicaArray = append(val_obj.replicaArray, tmp_val)
+				currentByte += 4
+				counter++
+			}
 
 			// ------------------------------------------------------------
 
