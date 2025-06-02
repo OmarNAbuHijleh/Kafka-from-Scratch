@@ -76,6 +76,56 @@ func ZigZagDecode(n uint64) int64 {
 	return int64((n >> 1) ^ uint64(-(n & 1)))
 }
 
+// Helper function for varint parsing. We use it on record items
+func varIntParser(currentByte *int, inputBytes []byte) int64 {
+	ending_byte := *currentByte
+	for hasMSBSet(inputBytes[ending_byte]) {
+		ending_byte += 1
+	}
+	val := ZigZagDecode(Decode7BitLittleEndian(inputBytes[*currentByte : ending_byte+1])) // We now have the value of the length. We need to pass it through a zigzag decoder
+	*currentByte = ending_byte + 1
+	return val
+}
+
+func parseValueInformation(currentByte *int, inputBytes []byte) Value {
+	val_obj := Value{}
+
+	// frame version
+	val_obj.frameVersion = inputBytes[*currentByte]
+	*currentByte++
+
+	// type
+	val_obj.recordType = inputBytes[*currentByte]
+	*currentByte++
+
+	// version
+	val_obj.versionFeatureLevel = inputBytes[*currentByte]
+	*currentByte++
+
+	// partition id
+	val_obj.partitionID = inputBytes[*currentByte : *currentByte+4] // copy(val_obj.partitionID, input_bytes[currentByte:currentByte+4])
+	*currentByte += 4
+
+	// topic uuid
+	val_obj.uuid = inputBytes[*currentByte : *currentByte+16]
+	*currentByte += 16
+
+	// replica array length
+	val_obj.replicaArrayLength = varIntParser(currentByte, inputBytes)
+
+	// replica array
+	var counter int64 = 0
+	var tmp_val uint32
+	val_obj.replicaArray = make([]uint32, 0, val_obj.replicaArrayLength)
+	for counter < val_obj.replicaArrayLength {
+		tmp_val = binary.BigEndian.Uint32(inputBytes[*currentByte : *currentByte+4])
+		val_obj.replicaArray = append(val_obj.replicaArray, tmp_val)
+		*currentByte += 4
+		counter++
+	}
+	return val_obj
+}
+
 // For a given stream of bytes, we obtain the metadata and return a slice of RecordBatch
 func createClusterMetaData(input_bytes []byte) []RecordBatch {
 	var retRecordBatch []RecordBatch
@@ -104,45 +154,26 @@ func createClusterMetaData(input_bytes []byte) []RecordBatch {
 		currentByte += 61
 		numRecords := int(binary.BigEndian.Uint32(recordBatchItem.recordsLength)) // convert to an integer to see the number of records in the batch
 
-		for i = 0; i < numRecords; i++ {
+		var recordCounter int = 0
+		for recordCounter < numRecords {
 			// Making the record
 			recordItem := Record{}
 
 			// Get the record length
-			ending_byte := currentByte
-			for hasMSBSet(input_bytes[ending_byte]) {
-				ending_byte += 1
-			}
-			recordItem.length = ZigZagDecode(Decode7BitLittleEndian(input_bytes[currentByte : ending_byte+1])) // We now have the value of the length. We need to pass it through a zigzag decoder
-			currentByte = ending_byte + 1
+			recordItem.length = varIntParser(&currentByte, input_bytes)
 
 			// Get the attributes of ther record
 			recordItem.attributes = input_bytes[currentByte]
 			currentByte++
 
 			// Get the timestamp delta
-			ending_byte = currentByte
-			for hasMSBSet(input_bytes[ending_byte]) {
-				ending_byte += 1
-			}
-			recordItem.timeStampDelta = ZigZagDecode(Decode7BitLittleEndian(input_bytes[currentByte : ending_byte+1])) // We now have the value of the length. We need to pass it through a zigzag decoder
-			currentByte = ending_byte + 1
+			recordItem.timeStampDelta = varIntParser(&currentByte, input_bytes)
 
 			// Get the offset delta
-			ending_byte = currentByte
-			for hasMSBSet(input_bytes[ending_byte]) {
-				ending_byte += 1
-			}
-			recordItem.offsetDelta = ZigZagDecode(Decode7BitLittleEndian(input_bytes[currentByte : ending_byte+1])) // We now have the value of the length. We need to pass it through a zigzag decoder
-			currentByte = ending_byte + 1
+			recordItem.offsetDelta = varIntParser(&currentByte, input_bytes)
 
 			// Key Length
-			ending_byte = currentByte
-			for hasMSBSet(input_bytes[ending_byte]) {
-				ending_byte += 1
-			}
-			recordItem.keyLength = ZigZagDecode(Decode7BitLittleEndian(input_bytes[currentByte : ending_byte+1])) // We now have the value of the length. We need to pass it through a zigzag decoder
-			currentByte = ending_byte + 1
+			recordItem.keyLength = varIntParser(&currentByte, input_bytes)
 
 			// Key
 			if recordItem.keyLength > 0 {
@@ -151,67 +182,19 @@ func createClusterMetaData(input_bytes []byte) []RecordBatch {
 			}
 
 			// Value Length
-			ending_byte = currentByte
-			for hasMSBSet(input_bytes[ending_byte]) {
-				ending_byte += 1
-			}
-			recordItem.valueLength = ZigZagDecode(Decode7BitLittleEndian(input_bytes[currentByte : ending_byte+1])) // We now have the value of the length. We need to pass it through a zigzag decoder
-			currentByte = ending_byte + 1
+			recordItem.valueLength = varIntParser(&currentByte, input_bytes)
 
 			// ------------------------------------------------------------
 			// Value portion (Partition Record)
-			// TODO: Implement this piece
-			val_obj := Value{}
-
-			// frame version
-			val_obj.frameVersion = input_bytes[currentByte]
-			currentByte++
-
-			// type
-			val_obj.recordType = input_bytes[currentByte]
-			currentByte++
-
-			// version
-			val_obj.versionFeatureLevel = input_bytes[currentByte]
-			currentByte++
-
-			// partition id
-			val_obj.partitionID = input_bytes[currentByte : currentByte+4] // copy(val_obj.partitionID, input_bytes[currentByte:currentByte+4])
-			currentByte += 4
-
-			// topic uuid
-			val_obj.uuid = input_bytes[currentByte : currentByte+16]
-			currentByte += 16
-
-			// replica array length
-			ending_byte = currentByte
-			for hasMSBSet(input_bytes[ending_byte]) {
-				ending_byte += 1
-			}
-			val_obj.replicaArrayLength = ZigZagDecode(Decode7BitLittleEndian(input_bytes[currentByte : ending_byte+1])) // We now have the value of the length. We need to pass it through a zigzag decoder
-			currentByte = ending_byte + 1
-
-			// replica array
-
-			var counter int64 = 0
-			var tmp_val uint32
-			val_obj.replicaArray = make([]uint32, 0, val_obj.replicaArrayLength)
-			for counter < val_obj.replicaArrayLength {
-				tmp_val = binary.BigEndian.Uint32(input_bytes[currentByte : currentByte+4])
-				val_obj.replicaArray = append(val_obj.replicaArray, tmp_val)
-				currentByte += 4
-				counter++
-			}
+			recordItem.valueStruct = parseValueInformation(&currentByte, input_bytes)
 
 			// ------------------------------------------------------------
 
 			// Headers Array Count
-			ending_byte = currentByte
-			for hasMSBSet(input_bytes[ending_byte]) {
-				ending_byte += 1
-			}
-			recordItem.headersArrayCount = ZigZagDecode(Decode7BitLittleEndian(input_bytes[currentByte : ending_byte+1])) // We now have the value of the length. We need to pass it through a zigzag decoder
-			currentByte = ending_byte + 1
+			recordItem.headersArrayCount = varIntParser(&currentByte, input_bytes)
+
+			recordSlice = append(recordSlice, recordItem)
+			recordCounter++
 		}
 
 	}

@@ -14,23 +14,12 @@ var data []byte
 var err error
 
 func main() {
+	// Read the cluster metadata file
 	data, err = os.ReadFile("/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log")
 	if err != nil {
 		fmt.Println("Error reading file")
 	}
-
-	// file, err := os.ReadAll("/tmp/kraft-combined-logs/__cluster_metadata-0/00000000000000000000.log")
-	// if err != nil {
-	// 	fmt.Println("Error opening the file")
-	// }
-	// defer file.Close()
-
-	// data, err := io.ReadAll(file)
-	// if err != nil {
-	// 	fmt.Println("Error Reading file")
-	// }
-	// fmt.Println("File Contents")
-	// fmt.Println(string(data))
+	recordBatchSlice := createClusterMetaData(data) // Get the cluster metadata
 
 	// First create a server that can connect on port 9092
 	fmt.Println("Creating listener . . . ")
@@ -142,12 +131,12 @@ func handleConnection(conn net.Conn) {
 		// Now that we have the buffer we can do the following
 		payload_bytes := response.Bytes()
 		response_message_size_bytes := uint32(len(payload_bytes))
-		fmt.Printf("Response message size in bytes: %T\n ", response_message_size_bytes)
 		binary.Write(conn, binary.BigEndian, response_message_size_bytes)
 		conn.Write(payload_bytes)
 	}
 }
 
+// This is the APIVersions function
 func eighteen_response_block(bytesBuffer *bytes.Buffer, request_api_key uint16) {
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(3+1)) // Default is 4? - 1 byte
 
@@ -173,7 +162,7 @@ func eighteen_response_block(bytesBuffer *bytes.Buffer, request_api_key uint16) 
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))  // Tag buffer - 1 byte
 }
 
-// This is the response for
+// This is the response for DescribeTopicPartitions
 func seventy_five_response_block(bytesBuffer *bytes.Buffer, topic_names []string) {
 	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))                  // Tag buffer (1 bytes)
 	binary.Write(bytesBuffer, binary.BigEndian, uint32(0))                 //throttle time
