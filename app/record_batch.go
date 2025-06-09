@@ -7,24 +7,38 @@ import "encoding/binary"
 // 	"encoding/binary"
 // )
 
+// A value struct can be one of 3 types - feature record, partition record, and topic record
 type Value struct {
-	frameVersion                byte     //integer indicating the version format of the record
-	recordType                  byte     //integer explaining the type of the record
-	versionFeatureLevel         byte     // indicates the version of the feature type record
+	frameVersion      byte  // 1 byte big endian integer indicating the version of the format of the record
+	recordType        int8  // 1 byte big endian integer explaining the type of the record - 03 means partition record, 02 is a topic record, 12 in decimal is a feature level record
+	version           byte  // 1 byte big endian integer indicating the version feature/topic/partition level record
+	taggedFieldsCount int64 //unsigned var size integer indicating the number of tagged fields
+
+	//Feature level
+	feature_level int64 // 2 byte big endian integer indicating the level of the feature level record
+
+	// Topic level and Partition level
+	uuid []byte //16 byte uuid
+
+	// Feature level and Topic level
+	nameLength int64  // unsigned variable size integer indicating the length of the name as a compact string (so it's actually length of the name + 1)
+	name       string // the name in accordance with name length. this is a string. Can be the topic level name, or feature level name
+
+	// Partition Level
 	partitionID                 []byte   //4 byte ID of the partition
-	uuid                        []byte   //16 byte uuid
 	replicaArrayLength          int64    //varint length of replica array. Compact Int and replicaArray length is actually this value - 1
 	replicaArray                []uint32 // 4 byte big endian integers containing replicaID of the replicas
 	lengthInSyncReplicaArray    int64    //varint length of replica sync array. Compact Int and replicaSyncArray length is actually this value - 1
-	inSyncReplicaArray          []byte   // 4 byte big endian integers containing replicaID of in sync replicas
+	inSyncReplicaArray          []uint32 // 4 byte big endian integers containing replicaID of in sync replicas
 	lengthRemovingReplicasArray int64    //varint length of removing replicas array. Compact Int and replicaSyncArray length is actually this value - 1
-	lengthAddingReplicasArray   int64    //varint length of adding replicas array. Compact Int and replicaSyncArray length is actually this value - 1
+	removingReplicasArray       []uint32
+	lengthAddingReplicasArray   int64 //varint length of adding replicas array. Compact Int and replicaSyncArray length is actually this value - 1
+	addingReplicasArray         []uint32
 	leader                      []byte   // 4 byte big endian integer indicating replicaID of the leader
 	leaderEpoch                 []byte   // 4 byte big endian integer indicating the epoch of the leader
 	partitionEpoch              []byte   // 4 byte big endian integer indicating the epoch of the partition
 	lengthOfDirectoriesArr      int64    // unsigned var size integer indicating # directories in array. length is actually this value - 1 since compact
-	directoriesArray            []byte   //16 byte raw byte arrays
-	taggedFieldsCount           int64    //unsigned var size integer
+	directoriesArray            [][]byte //16 byte raw byte arrays
 }
 
 type Record struct {
@@ -87,42 +101,102 @@ func varIntParser(currentByte *int, inputBytes []byte) int64 {
 	return val
 }
 
+// this will parse the value information for all types of levels (partition, topic, and feature!)
 func parseValueInformation(currentByte *int, inputBytes []byte) Value {
 	val_obj := Value{}
-
-	// frame version
 	val_obj.frameVersion = inputBytes[*currentByte]
 	*currentByte++
-
-	// type
-	val_obj.recordType = inputBytes[*currentByte]
+	val_obj.recordType = int8(inputBytes[*currentByte]) // indicates the type of record. How we parse everything else depends on this
 	*currentByte++
 
-	// version
-	val_obj.versionFeatureLevel = inputBytes[*currentByte]
+	val_obj.version = inputBytes[*currentByte]
 	*currentByte++
 
-	// partition id
-	val_obj.partitionID = inputBytes[*currentByte : *currentByte+4] // copy(val_obj.partitionID, input_bytes[currentByte:currentByte+4])
-	*currentByte += 4
-
-	// topic uuid
-	val_obj.uuid = inputBytes[*currentByte : *currentByte+16]
-	*currentByte += 16
-
-	// replica array length
-	val_obj.replicaArrayLength = varIntParser(currentByte, inputBytes)
-
-	// replica array
-	var counter int64 = 0
-	var tmp_val uint32
-	val_obj.replicaArray = make([]uint32, 0, val_obj.replicaArrayLength)
-	for counter < val_obj.replicaArrayLength {
-		tmp_val = binary.BigEndian.Uint32(inputBytes[*currentByte : *currentByte+4])
-		val_obj.replicaArray = append(val_obj.replicaArray, tmp_val)
+	if val_obj.recordType == 3 {
+		val_obj.partitionID = inputBytes[*currentByte : *currentByte+4]
 		*currentByte += 4
-		counter++
+
+		val_obj.uuid = inputBytes[*currentByte : *currentByte+16]
+		*currentByte += 16
+
+		val_obj.replicaArrayLength = varIntParser(currentByte, inputBytes)
+		val_obj.replicaArray = make([]uint32, val_obj.replicaArrayLength-1)
+		tmp_counter := uint32(0)
+		for tmp_counter < uint32(val_obj.replicaArrayLength) {
+			val_obj.replicaArray = append(val_obj.replicaArray, binary.BigEndian.Uint32(inputBytes[*currentByte:*currentByte+4]))
+			*currentByte += 4
+			tmp_counter++
+		}
+
+		val_obj.lengthInSyncReplicaArray = varIntParser(currentByte, inputBytes)
+		val_obj.inSyncReplicaArray = make([]uint32, val_obj.lengthInSyncReplicaArray-1)
+		tmp_counter = uint32(0)
+		for tmp_counter < uint32(val_obj.lengthInSyncReplicaArray) {
+			val_obj.inSyncReplicaArray = append(val_obj.inSyncReplicaArray, binary.BigEndian.Uint32(inputBytes[*currentByte:*currentByte+4]))
+			*currentByte += 4
+			tmp_counter++
+		}
+
+		val_obj.lengthRemovingReplicasArray = varIntParser(currentByte, inputBytes)
+		val_obj.removingReplicasArray = make([]uint32, val_obj.lengthRemovingReplicasArray-1)
+		tmp_counter = uint32(0)
+		for tmp_counter < uint32(val_obj.lengthRemovingReplicasArray) {
+			val_obj.removingReplicasArray = append(val_obj.removingReplicasArray, binary.BigEndian.Uint32(inputBytes[*currentByte:*currentByte+4]))
+			*currentByte += 4
+			tmp_counter++
+		}
+
+		val_obj.lengthAddingReplicasArray = varIntParser(currentByte, inputBytes)
+		val_obj.addingReplicasArray = make([]uint32, val_obj.lengthAddingReplicasArray-1)
+		tmp_counter = uint32(0)
+		for tmp_counter < uint32(val_obj.lengthAddingReplicasArray) {
+			val_obj.addingReplicasArray = append(val_obj.addingReplicasArray, binary.BigEndian.Uint32(inputBytes[*currentByte:*currentByte+4]))
+			*currentByte += 4
+			tmp_counter++
+		}
+
+		val_obj.leader = inputBytes[*currentByte : *currentByte+4]
+		*currentByte += 4
+
+		val_obj.leaderEpoch = inputBytes[*currentByte : *currentByte+4]
+		*currentByte += 4
+
+		val_obj.partitionEpoch = inputBytes[*currentByte : *currentByte+4]
+		*currentByte += 4
+
+		val_obj.lengthOfDirectoriesArr = varIntParser(currentByte, inputBytes)
+		val_obj.directoriesArray = make([][]byte, val_obj.lengthOfDirectoriesArr-1)
+		tmp_counter = 0
+		for tmp_counter < uint32(val_obj.lengthOfDirectoriesArr) {
+			val_obj.directoriesArray[tmp_counter] = inputBytes[*currentByte : *currentByte+16]
+			*currentByte += 16
+			tmp_counter++
+		}
+
+	} else if val_obj.recordType == 2 {
+		val_obj.nameLength = varIntParser(currentByte, inputBytes)
+
+		val_obj.name = string(inputBytes[*currentByte : *currentByte+int(val_obj.nameLength)])
+		*currentByte += int(val_obj.nameLength)
+
+		// topic uuid
+		val_obj.uuid = inputBytes[*currentByte : *currentByte+16]
+		*currentByte += 16
+	} else if val_obj.recordType == 12 {
+		val_obj.nameLength = varIntParser(currentByte, inputBytes)
+
+		val_obj.name = string(inputBytes[*currentByte : *currentByte+int(val_obj.nameLength)])
+		*currentByte += int(val_obj.nameLength)
+
+		val_obj.feature_level = int64(binary.BigEndian.Uint16(inputBytes[*currentByte : *currentByte+2]))
+		*currentByte += 2
 	}
+
+	val_obj.taggedFieldsCount = varIntParser(currentByte, inputBytes)
+	if val_obj.taggedFieldsCount != 0 {
+		*currentByte += int(val_obj.taggedFieldsCount)
+	}
+
 	return val_obj
 }
 

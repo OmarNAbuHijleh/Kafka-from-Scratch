@@ -12,6 +12,7 @@ import (
 // var file os.File
 var data []byte
 var err error
+var recordBatchSlice []RecordBatch
 
 func main() {
 	// Read the cluster metadata file
@@ -19,7 +20,7 @@ func main() {
 	if err != nil {
 		fmt.Println("Error reading file")
 	}
-	recordBatchSlice := createClusterMetaData(data) // Get the cluster metadata
+	recordBatchSlice = createClusterMetaData(data) // Get the cluster metadata
 
 	// First create a server that can connect on port 9092
 	fmt.Println("Creating listener . . . ")
@@ -96,14 +97,12 @@ func handleConnection(conn net.Conn) {
 			client_id_length := uint16(binary.BigEndian.Uint16(buffer[8:10]))
 
 			start_idx = 10
-			end_idx := start_idx + client_id_length
-			// client_id_contents := string(buffer[start_idx:end_idx])
+			client_id_contents := string(buffer[start_idx : start_idx+client_id_length])
 
 			// For the tag buffer (1 byte)
-			start_idx = end_idx + 1
+			start_idx = start_idx + client_id_length + 1
 
 			// topics array
-			end_idx = start_idx + 1
 			array_length := uint8(buffer[start_idx]) // 1 byte
 			start_idx++
 
@@ -119,11 +118,10 @@ func handleConnection(conn net.Conn) {
 				i++
 			}
 			// Response partition limit
-			end_idx = start_idx + 4
-			// response_partition_limit := uint32(binary.BigEndian.Uint32(buffer[start_idx:end_idx]))
-
-			start_idx = end_idx
-			// cursor := uint8(buffer[start_idx])
+			response_partition_limit := uint32(binary.BigEndian.Uint32(buffer[start_idx : start_idx+4]))
+			start_idx += 4
+			cursor := uint8(buffer[start_idx])
+			start_idx += 1 // tag buffer
 
 			seventy_five_response_block(&response, topic_names)
 		}
@@ -164,9 +162,12 @@ func eighteen_response_block(bytesBuffer *bytes.Buffer, request_api_key uint16) 
 
 // This is the response for DescribeTopicPartitions
 func seventy_five_response_block(bytesBuffer *bytes.Buffer, topic_names []string) {
-	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))                  // Tag buffer (1 bytes)
-	binary.Write(bytesBuffer, binary.BigEndian, uint32(0))                 //throttle time
-	binary.Write(bytesBuffer, binary.BigEndian, uint8(len(topic_names)+1)) //Array length
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(0))  // Tag buffer (1 bytes)
+	binary.Write(bytesBuffer, binary.BigEndian, uint32(0)) //throttle time
+
+	// TODO: Write a function for this! - Encoding as a varint. This is going to be a value represented by the number of topics we have from our recordBatchSlice
+	// NOTE: Include a clause for unknown topics!
+	binary.Write(bytesBuffer, binary.BigEndian, uint8(len(topic_names)+1)) //Array length - this is to be encoded as a varint
 
 	for _, topic := range topic_names {
 		binary.Write(bytesBuffer, binary.BigEndian, uint16(3))
